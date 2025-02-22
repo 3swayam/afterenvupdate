@@ -1,7 +1,7 @@
 import math
 import numpy as np
 from Config import Config
-
+from scipy.integrate import quad
 
 class RSU:
     def __init__(self, vehicle, relative_x, relative_y=0):
@@ -14,6 +14,12 @@ class RSU:
         self.power = Config.RSU_POWER
         self.radius = Config.RSU_RADIUS
         self.loadfactor = 0  # ✅ New: Tracks RSU load dynamically
+        self.height = Config.RSU_HEIGHT
+        self.stay_dist = 2 * math.sqrt(self.radius**2 - self.height**2)
+        self.bandwidth = Config.BANDWIDTH
+        self.pathloss_exponent = Config.PATH_LOSS_EXPONENT
+        self.rayleigh_fading_channel = Config.RAYLEIGH_FADING_CHANNEL
+        self.noise = Config.NOISE
 
         # ✅ New: Precision handling for RSU position
         self.precision_error = Config.RSU_PRECISION_ERROR
@@ -44,3 +50,17 @@ class RSU:
         matrix = np.random.rand(*Config.COMPUTATION_MATRIX_SIZE)  # ✅ New: Generate **resource matrix**
         utilization = np.sum(matrix) / np.prod(Config.COMPUTATION_MATRIX_SIZE)
         return utilization <= Config.RESOURCE_UTILIZATION_THRESHOLD  # ✅ New: Prevents overload
+
+    def commDelay(self, task_size, stayTime, vehicleSpeed, vehiclePower):
+        avg_rate, _ = quad(self.transRate, 0, stayTime, args=(vehicleSpeed, vehiclePower))
+        avg_rate /= stayTime
+        return task_size / avg_rate
+
+    def transRate(self, t, vehicleSpeed, vehiclePower):
+        d = math.sqrt(self.height ** 2 + (self.stay_dist / 2 - vehicleSpeed * t) ** 2)
+        r = self.bandwidth * math.log2(
+            1 + ((vehiclePower * (d ** self.pathloss_exponent) * (self.rayleigh_fading_channel ** 2)) / self.noise))
+        return r
+    
+    def compute_energy(self, task_size, stayTime, vehicleSpeed, vehiclePower):
+        return self.power * (self.compDelay(task_size) + self.commDelay(task_size, stayTime, vehicleSpeed, vehiclePower) + Config.LATENCY)

@@ -1,15 +1,13 @@
 import torch
-import random
-import time
 import pickle
 import numpy as np
 from tqdm import tqdm
 from Config import Config
 from Vehicle import Vehicle
-from RSU import RSU
 from Env import Env
 from Agent import DQNAgent
 import csv
+from Dataset import genStates 
 
 
 def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_filename):
@@ -18,54 +16,68 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
     """
     reward_history = []
     vehicle_energy_history = []
-    offloading_rate_history = []
-    computation_delay_history = []
-    n_tasks_executed_history = []
+    vehicle_comp_delay_history = []
+    rsu_comp_delay_history = []
+    rsu_energy_history=[]
+    n_vehicle_tasks_history = []
+    n_rsu_tasks_history = []
 
     min_memory_size = batch_size * 5  # Ensure memory is filled before training
-
+    step_cnt = 0
+    best_score = -np.inf
+    
     for ep_cnt in tqdm(range(num_train_eps), desc="Training Progress", unit="episode"):
-        state = env.vehicle.get_state()
+        
         done = False
+        state = env.reset()
         ep_score = 0
-        step_count = 0  # Track steps per episode
-
+        vehicle_energy = 0
+        rsu_energy = 0
+        vehicle_comp_delay = 0
+        rsu_comp_delay = 0
+        n_vehicle_tasks = 0
+        n_rsu_tasks = 0
+        
         while not done:
             action = dqn_agent.select_action(state)
             next_state, reward, done = env.step(action)
+
             dqn_agent.memory.store(state, action, next_state, reward, done)
-
-            # ✅ Track vehicle energy consumption
-            if hasattr(env.vehicle, 'compute_energy'):
-                vehicle_energy_history.append(
-                    env.vehicle.compute_energy(task_size=5))  # Adjust task_size logic if needed
-
-            # ✅ Track computation delay
-            if hasattr(env.vehicle, 'compDelay'):
-                computation_delay_history.append(env.vehicle.compDelay(task_size=5))
-
-            # ✅ Track number of tasks executed
-            if hasattr(env, 'get_tasks_executed'):
-                n_tasks_executed_history.append(env.get_tasks_executed())
-
-            # ✅ Track offloading rate (tasks handled by RSU)
-            if hasattr(env, 'get_rsu_tasks_handled'):
-                offloading_rate_history.append(
-                    env.get_rsu_tasks_handled() / max(step_count, 1))  # Avoid division by zero
-
-            # Start learning only after memory is filled
             if len(dqn_agent.memory) > min_memory_size:
                 dqn_agent.learn(batch_size=batch_size)
+            
+            if step_cnt % update_frequency == 0:
+                dqn_agent.update_target_net()
+
+            state = next_state
 
             ep_score += reward
-            state = next_state
-            step_count += 1
+            if action:
+                rsu = env.selectClosestServer()
+                rsu_energy += rsu.compute_energy(state[0]*1e6, vehicle.stayTime(rsu.stay_dist), vehicle.speed, vehicle.power)
+                rsu_comm_delay = rsu.commDelay(state[0]*1e6, vehicle.stayTime(rsu.stay_dist), vehicle.speed, vehicle.power) + Config.LATENCY
+                rsu_comp_delay = rsu_comp_delay + rsu.compDelay(state[0]*1e6)+ rsu_comm_delay
+                n_rsu_tasks += 1
+            else:
+                vehicle_energy += env.vehicle.compute_energy(state[0]*1e6)
+                vehicle_comp_delay += env.vehicle.compDelay(state[0]*1e6)
+                n_vehicle_tasks += 1  
 
-            if step_count > 1000:  # 🚨 Prevent Infinite Loops
-                done = True
+            step_cnt += 1 
+            
 
         dqn_agent.update_epsilon()
+        # ADDING NEW CODE
         reward_history.append(ep_score)
+        vehicle_energy_history.append(vehicle_energy)
+        rsu_energy_history.append(rsu_energy)
+        vehicle_comp_delay_history.append(vehicle_comp_delay)
+        rsu_comp_delay_history.append(rsu_comp_delay)
+        n_vehicle_tasks_history.append(n_vehicle_tasks)
+        n_rsu_tasks_history.append(n_rsu_tasks)
+    
+
+        # END OF NEW CODE
 
         # Save model if improvement is detected
         if ep_score >= max(reward_history[-10:], default=-np.inf):
@@ -76,27 +88,84 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
         pickle.dump({
             'reward_history': reward_history,
             'vehicle_energy_history': vehicle_energy_history,
-            'offloading_rate_history': offloading_rate_history,
-            'computation_delay_history': computation_delay_history,
-            'n_tasks_executed_history': n_tasks_executed_history
+            'rsu_energy_history':rsu_energy_history,
+            'vehicle_comp_delay_history':vehicle_comp_delay_history,
+            'rsu_comp_delay_history':rsu_comp_delay_history,
+            'n_vehicle_tasks_history': n_vehicle_tasks_history,
+            'n_rsu_tasks_history': n_rsu_tasks_history,
         }, f)
 
-
 def test(env, dqn_agent, num_test_eps):
-    """
-    Tests the trained RL model.
-    """
+    step_cnt = 0
+    reward_history = []
+    vehicle_energy_history = []
+    rsu_energy_history = []
+    vehicle_comp_delay_history = []
+    rsu_comp_delay_history = []
+    n_vehicle_tasks_history = []
+    n_rsu_tasks_history = []
+
     for ep in range(num_test_eps):
-        state = env.vehicle.get_state()
-        done = False
         score = 0
+        vehicle_energy = 0
+        rsu_energy = 0
+        vehicle_comp_delay = 0
+        rsu_comp_delay = 0
+        done = False
+        state = env.reset()
+        episode_states_action = []
+        n_vehicle_tasks = 0
+        n_rsu_tasks = 0
 
         while not done:
             action = dqn_agent.select_action(state)
-            state, reward, done = env.step(action)
+            print(state, action)
+            next_state, reward, done = env.step(action)
             score += reward
 
-        print(f"Episode {ep}: Score = {score}")
+            if action:
+                rsu = env.selectClosestServer()
+                rsu_energy += rsu.compute_energy(state[0]*1e6, vehicle.stayTime(rsu.stay_dist), vehicle.speed, vehicle.power)
+                rsu_comm_delay = rsu.commDelay(state[0]*1e6, vehicle.stayTime(rsu.stay_dist), vehicle.speed, vehicle.power) + Config.LATENCY
+                rsu_comp_delay = rsu_comp_delay + rsu.compDelay(state[0]*1e6)+ rsu_comm_delay
+                n_rsu_tasks += 1
+            else:
+                vehicle_energy += env.vehicle.compute_energy(state[0]*1e6)
+                vehicle_comp_delay += env.vehicle.compDelay(state[0]*1e6)
+                n_vehicle_tasks += 1
+
+            episode_states_action.append(state + [action])
+            state = next_state
+            step_cnt += 1
+
+            if ep == num_test_eps - 1:
+                with open(f'{model_filename}.csv', 'w', newline='') as csvfile:
+                    writer = csv.writer(csvfile)
+
+                    writer.writerow(['TaskSize', 'TaskDeadline', 'VehicleLoadFactor', 'RSULoadFactor', 'OffloadDecision'])
+                    for item in episode_states_action:
+                        writer.writerow(item)
+
+        reward_history.append(score)
+        vehicle_energy_history.append(vehicle_energy)
+        rsu_energy_history.append(rsu_energy)
+        vehicle_comp_delay_history.append(vehicle_comp_delay)
+        rsu_comp_delay_history.append(rsu_comp_delay)
+        n_vehicle_tasks_history.append(n_vehicle_tasks)
+        n_rsu_tasks_history.append(n_rsu_tasks)
+        print('Ep: {}, Score: {}'.format(ep, score))
+
+        # ✅ Save all tracked metrics
+    with open(f'{model_filename}_test.pkl', 'wb') as f:
+        pickle.dump({
+            'reward_history': reward_history,
+            'vehicle_energy_history': vehicle_energy_history,
+            'rsu_energy_history':rsu_energy_history,
+            'vehicle_comp_delay_history':vehicle_comp_delay_history,
+            'rsu_comp_delay_history':rsu_comp_delay_history,
+            'n_vehicle_tasks_history': n_vehicle_tasks_history,
+            'n_rsu_tasks_history': n_rsu_tasks_history,
+        }, f)
 
 
 if __name__ == '__main__':
@@ -104,30 +173,46 @@ if __name__ == '__main__':
     print(f"Using Device: {device}")
 
     vehicle = Vehicle()
-    env = Env(vehicle)
+    train_mode = Config.TRAIN_MODE
+    train_states, test_states = genStates()
+    env = Env(vehicle, train_states+test_states)
     model_filename = Config.MODEL_NAME
 
-    dqn_agent = DQNAgent(
-        device,
-        state_size=Config.STATE_SIZE,
-        action_size=Config.ACTION_SIZE,
-        discount=Config.DISCOUNT,
-        memory_capacity=50000,  # Increased memory
-        lr=5e-4,  # Lowered learning rate
-        eps_max=0.5,  # Lowered initial epsilon
-        eps_decay=0.997,  # Faster decay
-        train_mode=True
-    )
+    # new code
+    if train_mode:
+        train_env = Env(vehicle, train_states,train_mode)
+        dqn_agent = DQNAgent(
+            device,
+            state_size=Config.STATE_SIZE,
+            action_size=Config.ACTION_SIZE,
+            discount=Config.DISCOUNT,
+            memory_capacity=50000,  # Increased memory
+            lr=5e-4,  # Lowered learning rate
+            eps_max=0.5,  # Lowered initial epsilon
+            eps_decay=0.997,  # Faster decay
+            train_mode=train_mode)
 
-    print("Checking if save_model exists:", hasattr(dqn_agent, "save_model"))
+        train(
+            env=train_env,
+            dqn_agent=dqn_agent,
+            num_train_eps=Config.NUM_TRAIN_EPS,
+            update_frequency=Config.UPDATE_FREQUENCY,
+            batch_size=Config.BATCH_SIZE,
+            model_filename=model_filename
+        )
 
-    train(
-        env=env,
-        dqn_agent=dqn_agent,
-        num_train_eps=Config.NUM_TRAIN_EPS,
-        update_frequency=Config.UPDATE_FREQUENCY,
-        batch_size=Config.BATCH_SIZE,
-        model_filename=model_filename
-    )
-
-    test(env, dqn_agent, num_test_eps=Config.NUM_TEST_EPS)
+    else:
+        test_env = Env(vehicle, test_states,train_mode)
+        dqn_agent = DQNAgent(
+            device,
+            state_size=Config.STATE_SIZE,
+            action_size=Config.ACTION_SIZE,
+            discount=Config.DISCOUNT,
+            memory_capacity=50000,  # Increased memory
+            lr=5e-4,  # Lowered learning rate
+            eps_max=0.5,  # Lowered initial epsilon
+            eps_decay=0.997,  # Faster decay
+            train_mode=train_mode)
+        dqn_agent.load_model(model_filename)
+        test(test_env, dqn_agent, num_test_eps=Config.NUM_TEST_EPS)
+    # new code end

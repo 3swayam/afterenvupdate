@@ -43,7 +43,7 @@ class RealWorld:
             decision = "Offloaded"
         else:  # Process locally
             execution_time = self.vehicle.compDelay(task_size)
-            energy_consumption = self.vehicle.compute_energy(task_size, comm_delay=0)
+            energy_consumption = self.vehicle.compute_energy(task_size)
             decision = "Processed Locally"
 
         return {

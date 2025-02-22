@@ -26,6 +26,14 @@ class Config(object):
     RSU_MIN_DISTANCE = 200  # ✅ New: Minimum distance before adding a new RSU
     RSU_PRECISION_ERROR = 1e-6  # ✅ New: Precision handling for RSU position calculations
 
+
+    # NEW 
+    PATH_LOSS_EXPONENT = -3
+    RAYLEIGH_FADING_CHANNEL = 0.5
+    NOISE = -90 # in dB
+    NOISE = 10**(NOISE/10)
+    LATENCY = 5*1e-3
+
     # 🎯 REINFORCEMENT LEARNING PARAMETERS
     STATE_SIZE = 4
     ACTION_SIZE = 2
@@ -37,9 +45,13 @@ class Config(object):
     LEARNING_RATE = 1e-3
     BATCH_SIZE = 64
     NUM_TRAIN_EPS = 1000
-    NUM_TEST_EPS = 10
-    TRAIN_MODE = True
+    NUM_TEST_EPS = 200
+    TRAIN_MODE = False
     MODEL_NAME = "optimized_multi_agent_model"
+
+    NUM_MEMORY_FILL_EPS = 3
+    N_TRAIN_STEPS_PER_EPISODE = 1350
+    N_TEST_STEPS_PER_EPISODE = 330
 
     # ⏳ REAL-TIME TRAINING & EXECUTION
     TIME_STEP = 1  # ✅ New: 1 second per simulation step

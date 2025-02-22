@@ -7,6 +7,7 @@ from collections import deque
 class Vehicle:
     def __init__(self):
         self.freq = Config.VEHICLE_FREQUENCY
+        self.speed = (Config.VEHICLE_SPEED*5)/18 # m/s
         self.power = Config.VEHICLE_POWER
         self.loadfactor = 0
         self.CPI = Config.VEHICLE_CPI
@@ -21,10 +22,10 @@ class Vehicle:
         # ✅ New: Track total energy consumed
         self.total_energy_consumed = 0
 
-    def compDelay(self, task_size):
-        return task_size / (self.freq / self.CPI)
+    def compDelay(self, task_size): # same 
+        return task_size/(self.freq/self.CPI)
 
-    def compute_energy(self, task_size, comm_delay=0):
+    def compute_energy(self, task_size, comm_delay=0.1):
         comp_energy = self.power * self.compDelay(task_size)
         comm_energy = self.power * comm_delay
 
@@ -69,8 +70,9 @@ class Vehicle:
 
         self.position_queue.append((self.x_position, self.y_position))
 
-    def stayTime(self, rsu):
-        return rsu.radius / max(self.velocity_x, 1e-6)
+    def stayTime(self, stay_dist):
+        self.stay_time = stay_dist / max(self.velocity_x, Config.VEHICLE_PRECISION_ERROR)
+        return int(self.stay_time)
 
     def isConnected(self, rsu):
         return math.sqrt((self.x_position - rsu.x_position) ** 2 + (self.y_position - rsu.y_position) ** 2) < rsu.radius

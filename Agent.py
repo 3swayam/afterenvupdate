@@ -111,13 +111,22 @@ class DQNAgent:
 
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
-    def select_action(self, state):
+    # def select_action(self, state):
 
+    #     if random.random() <= self.epsilon:
+    #         return random.randrange(self.action_size)
+    #     state_tensor = torch.tensor([state], dtype=torch.float32).to(self.device)
+    #     with torch.no_grad():
+    #         return torch.argmax(self.policy_net(state_tensor)).item()
+        
+    def select_action(self, state):
         if random.random() <= self.epsilon:
             return random.randrange(self.action_size)
-        state_tensor = torch.tensor([state], dtype=torch.float32).to(self.device)
+        if not torch.is_tensor(state):
+            state = torch.tensor([state], dtype=torch.float32).to(self.device)
         with torch.no_grad():
-            return torch.argmax(self.policy_net(state_tensor)).item()
+            action = self.policy_net.forward(state)
+        return torch.argmax(action).item()
 
     def learn(self, batch_size):
         """

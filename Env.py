@@ -4,11 +4,22 @@ import random
 
 
 class Env:
-    def __init__(self, vehicle):
+    def __init__(self, vehicle,states,train_mode=True):
 
         self.vehicle = vehicle
         self.rsus = []  # ✅ Change: List to store multiple RSUs dynamically
         self.initializeServers()  # ✅ New: Setup initial RSUs
+        self.cnt = 0
+        self.states = states
+        self.action_space = [0,1] # 0-local, 1-offload
+        self.train_mode = train_mode
+    
+    def reset(self):
+        self.delay = 0
+        self.vehicle.loadfactor = 0
+        self.loadfactor = 0
+        self.cnt = 0
+        return self.states[0]
 
     def initializeServers(self):
 
@@ -30,6 +41,7 @@ class Env:
         return min(self.rsus, key=lambda rsu: rsu.calculateDistance(self.vehicle))
 
     def step(self, action):
+        self.done = False
 
         # ✅ Process the action
         if action == 1:  # Offload task to RSU
@@ -47,11 +59,19 @@ class Env:
         self.add_remove_servers()
 
         # ✅ Generate next state
-        next_state = self.vehicle.get_state()
+        self.cnt+=1
+        self.next_state = self.states[self.cnt]
 
-        done = self.check_done_condition()  # 🔍 NEW: Ensure episodes end
+        #done = self.check_done_condition()  # 🔍 NEW: Ensure episodes end
+        if self.train_mode: 
+            if(self.cnt == Config.N_TRAIN_STEPS_PER_EPISODE):
+                self.done = True
+        else:
+           if(self.cnt == Config.N_TEST_STEPS_PER_EPISODE):
+                self.done = True
 
-        return next_state, reward, done
+        #return next_state, reward, done
+        return self.next_state, reward, self.done
 
     def check_done_condition(self):
         """
