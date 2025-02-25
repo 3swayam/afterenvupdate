@@ -1,7 +1,7 @@
 from Config import Config
 from RSU import RSU
 import random
-
+from reward import reward_calculate
 
 class Env:
     def __init__(self, vehicle,states,train_mode=True):
@@ -39,20 +39,16 @@ class Env:
     def selectClosestServer(self):
 
         return min(self.rsus, key=lambda rsu: rsu.calculateDistance(self.vehicle))
-
-    def step(self, action):
+    
+    
+    def step(self, state,action):
+        self.vehicle.loadfactor = state[2]
         self.done = False
-
-        # ✅ Process the action
-        if action == 1:  # Offload task to RSU
-            rsu = self.selectClosestServer()
-            execution_time = rsu.compDelay(5e6)
-            energy_consumption = rsu.computeEnergyConsumption(5e6)
-            reward = -execution_time - energy_consumption
-        else:  # Process locally
-            execution_time = self.vehicle.compDelay(5e6)
-            energy_consumption = self.vehicle.compute_energy(5e6, comm_delay=0)
-            reward = -execution_time - energy_consumption
+        closest_RSU = self.selectClosestServer()
+        closest_RSU.loadfactor = state[3]
+        
+        reward = reward_calculate(action, state,self.vehicle,
+                                       closest_RSU)
 
         # ✅ Move vehicle & update servers
         self.vehicle.move(Config.TIME_STEP)
@@ -62,7 +58,6 @@ class Env:
         self.cnt+=1
         self.next_state = self.states[self.cnt]
 
-        #done = self.check_done_condition()  # 🔍 NEW: Ensure episodes end
         if self.train_mode: 
             if(self.cnt == Config.N_TRAIN_STEPS_PER_EPISODE):
                 self.done = True
@@ -70,14 +65,6 @@ class Env:
            if(self.cnt == Config.N_TEST_STEPS_PER_EPISODE):
                 self.done = True
 
-        #return next_state, reward, done
         return self.next_state, reward, self.done
 
-    def check_done_condition(self):
-        """
-        Determine if the episode should terminate.
-        """
-        if self.vehicle.x_position > Config.MAX_DISTANCE:  # Example stopping condition
-            return True
-        return False
 

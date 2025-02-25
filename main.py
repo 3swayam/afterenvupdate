@@ -40,7 +40,7 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
         
         while not done:
             action = dqn_agent.select_action(state)
-            next_state, reward, done = env.step(action)
+            next_state, reward, done = env.step(state,action)
 
             dqn_agent.memory.store(state, action, next_state, reward, done)
             if len(dqn_agent.memory) > min_memory_size:
@@ -120,7 +120,7 @@ def test(env, dqn_agent, num_test_eps):
         while not done:
             action = dqn_agent.select_action(state)
             print(state, action)
-            next_state, reward, done = env.step(action)
+            next_state, reward, done = env.step(state,action)
             score += reward
 
             if action:
