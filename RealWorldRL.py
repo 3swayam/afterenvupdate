@@ -37,14 +37,23 @@ class RealWorld:
         Returns:
         - dict: Execution details including time, energy, and decision.
         """
-        action = self.dqn_agent.select_action(state)  # ✅ AI-based decision making
+        action = self.dqn_agent.select_action(state)  # AI-based decision making
         task_size = state[0]
-
-        if action == 1:  # Offload task to RSU
-            rsu = self.env.selectClosestServer()
-            execution_time = rsu.compDelay(task_size * 1e6)
-            energy_consumption = rsu.compute_energy(task_size * 1e6, self.vehicle.stayTime(rsu.stay_dist), self.vehicle.speed,
+        
+        if action:
+            connected_rsus = self.env.get_connected_servers()
+            # Distribute workload to all connected servers
+            if connected_rsus:
+                task_size = state[0] * 1e6 / len(connected_rsus)
+                execution_time =0
+                energy_consumption=0
+                for rsu in connected_rsus:
+                    rsu_comm_delay_single = rsu.commDelay(task_size, self.vehicle.stayTime(rsu.stay_dist), self.vehicle.speed, self.vehicle.power) + Config.LATENCY
+                    execution_time += rsu.compDelay(task_size) + rsu_comm_delay_single
+                    energy_consumption += rsu.compute_energy(task_size, self.vehicle.stayTime(rsu.stay_dist), self.vehicle.speed,
                                                     self.vehicle.power)
+            else:
+                print("NO connected RSUS")
             decision = "Offloaded"
         else:  # Process locally
             execution_time = self.vehicle.compDelay(task_size * 1e6)
@@ -86,13 +95,13 @@ class RealWorld:
         - num_tasks (int): Number of tasks to execute.
         """
         for index in range(num_tasks):
-            # task_size = states[index][0]  # ✅ Dynamic task generation
+            # task_size = states[index][0]  # Dynamic task generation
             result = self.execute_task(states[index])
             print(f"Task {result['decision']} - Time: {result['execution_time']:.4f}s, Energy: {result['energy_consumption']:.4f}J")
-            self.vehicle.move(Config.TIME_STEP)  # ✅ Vehicle moves after task execution
-            self.env.add_remove_servers()  # ✅ Update RSUs dynamically
+            self.vehicle.move(Config.TIME_STEP)  # Vehicle moves after task execution
+            self.env.add_remove_servers()  # Update RSUs dynamically
 
 
 if __name__ == "__main__":
     realworld = RealWorld()
-    realworld.run_simulation(len(states))  # ✅ Change: Simulates **10 tasks execution**
+    realworld.run_simulation(len(states))  # Change: Simulates **10 tasks execution**

@@ -74,6 +74,7 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
         dqn_agent.update_epsilon()
         # ADDING NEW CODE
         reward_history.append(ep_score)
+        print('Ep: {}, Score: {}'.format(ep_cnt, ep_score))
         vehicle_energy_history.append(vehicle_energy)
         rsu_energy_history.append(rsu_energy)
         vehicle_comp_delay_history.append(vehicle_comp_delay)
@@ -137,7 +138,7 @@ def test(env, dqn_agent, num_test_eps):
                         rsu_energy += rsu.compute_energy(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power)
                         rsu_comm_delay_single = rsu.commDelay(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power) + Config.LATENCY
                         rsu_comp_delay += rsu.compDelay(task_size) + rsu_comm_delay_single
-                        n_rsu_tasks += 1
+                    n_rsu_tasks += 1 #todo :: discuss
                 else:
                     print("NO connected RSUS")
             else:

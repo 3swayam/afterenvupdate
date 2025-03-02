@@ -56,6 +56,8 @@ class Env:
 
         if connected_rsus:
             reward = reward_calculate(action, state, self.vehicle, connected_rsus[0])
+            # if(len(connected_rsus)>1):
+            #     reward+=5
         else:
             print("Warning: No RSU connected, fallback to closest.")
 
