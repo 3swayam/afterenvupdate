@@ -40,12 +40,12 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
         
         while not done:
             action = dqn_agent.select_action(state)
-            next_state, reward, done = env.step(state,action)
+            # next_state, reward, done = env.step(state,action)
+            next_state, reward, done, connected_rsus = env.step(state, action) # Get connected RSUs
 
             dqn_agent.memory.store(state, action, next_state, reward, done)
             if len(dqn_agent.memory) > min_memory_size:
                 dqn_agent.learn(batch_size=batch_size)
-            
             if step_cnt % update_frequency == 0:
                 dqn_agent.update_target_net()
 
@@ -53,11 +53,16 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
 
             ep_score += reward
             if action:
-                rsu = env.selectClosestServer()
-                rsu_energy += rsu.compute_energy(state[0]*1e6, vehicle.stayTime(rsu.stay_dist), vehicle.speed, vehicle.power)
-                rsu_comm_delay = rsu.commDelay(state[0]*1e6, vehicle.stayTime(rsu.stay_dist), vehicle.speed, vehicle.power) + Config.LATENCY
-                rsu_comp_delay = rsu_comp_delay + rsu.compDelay(state[0]*1e6)+ rsu_comm_delay
-                n_rsu_tasks += 1
+                # Distribute workload to all connected servers
+                if connected_rsus:
+                    task_size = state[0] * 1e6 / len(connected_rsus)
+                    for rsu in connected_rsus:
+                        rsu_energy += rsu.compute_energy(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power)
+                        rsu_comm_delay_single = rsu.commDelay(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power) + Config.LATENCY
+                        rsu_comp_delay += rsu.compDelay(task_size) + rsu_comm_delay_single
+                        n_rsu_tasks += 1
+                else:
+                    print("NO connected RSUS")
             else:
                 vehicle_energy += env.vehicle.compute_energy(state[0]*1e6)
                 vehicle_comp_delay += env.vehicle.compDelay(state[0]*1e6)
@@ -83,7 +88,7 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
         if ep_score >= max(reward_history[-10:], default=-np.inf):
             dqn_agent.save_model(model_filename)
 
-    # ✅ Save all tracked metrics
+    # Save all tracked metrics
     with open(f'{model_filename}_train.pkl', 'wb') as f:
         pickle.dump({
             'reward_history': reward_history,
@@ -119,16 +124,22 @@ def test(env, dqn_agent, num_test_eps):
 
         while not done:
             action = dqn_agent.select_action(state)
-            print(state, action)
-            next_state, reward, done = env.step(state,action)
+            # print(state, action)
+            # next_state, reward, done = env.step(state,action)
+            next_state, reward, done, connected_rsus = env.step(state, action) # Get connected RSUs
             score += reward
 
             if action:
-                rsu = env.selectClosestServer()
-                rsu_energy += rsu.compute_energy(state[0]*1e6, vehicle.stayTime(rsu.stay_dist), vehicle.speed, vehicle.power)
-                rsu_comm_delay = rsu.commDelay(state[0]*1e6, vehicle.stayTime(rsu.stay_dist), vehicle.speed, vehicle.power) + Config.LATENCY
-                rsu_comp_delay = rsu_comp_delay + rsu.compDelay(state[0]*1e6)+ rsu_comm_delay
-                n_rsu_tasks += 1
+                # Distribute workload to all connected servers
+                if connected_rsus:
+                    task_size = state[0] * 1e6 / len(connected_rsus)
+                    for rsu in connected_rsus:
+                        rsu_energy += rsu.compute_energy(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power)
+                        rsu_comm_delay_single = rsu.commDelay(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power) + Config.LATENCY
+                        rsu_comp_delay += rsu.compDelay(task_size) + rsu_comm_delay_single
+                        n_rsu_tasks += 1
+                else:
+                    print("NO connected RSUS")
             else:
                 vehicle_energy += env.vehicle.compute_energy(state[0]*1e6)
                 vehicle_comp_delay += env.vehicle.compDelay(state[0]*1e6)
@@ -155,7 +166,7 @@ def test(env, dqn_agent, num_test_eps):
         n_rsu_tasks_history.append(n_rsu_tasks)
         print('Ep: {}, Score: {}'.format(ep, score))
 
-        # ✅ Save all tracked metrics
+        # Save all tracked metrics
     with open(f'{model_filename}_test.pkl', 'wb') as f:
         pickle.dump({
             'reward_history': reward_history,

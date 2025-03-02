@@ -4,7 +4,7 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from collections import deque  # ✅ Optimized memory management
+from collections import deque  # Optimized memory management
 import time
 
 
@@ -13,7 +13,7 @@ class ReplayMemory:
     def __init__(self, capacity):
 
         self.capacity = capacity
-        self.memory = deque(maxlen=capacity)  # ✅ Uses deque for efficiency
+        self.memory = deque(maxlen=capacity)  # Uses deque for efficiency
 
     def store(self, state, action, next_state, reward, done):
         """
@@ -56,7 +56,7 @@ class DQNNet(nn.Module):
     def save_model(self, filename):
         """ Saves the policy network model. """
         torch.save(self.policy_net.state_dict(), filename)
-        print(f"✅ Model saved as {filename}")
+        print(f"Model saved as {filename}")
 
     def forward(self, x):
         """
@@ -111,14 +111,6 @@ class DQNAgent:
 
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
-    # def select_action(self, state):
-
-    #     if random.random() <= self.epsilon:
-    #         return random.randrange(self.action_size)
-    #     state_tensor = torch.tensor([state], dtype=torch.float32).to(self.device)
-    #     with torch.no_grad():
-    #         return torch.argmax(self.policy_net(state_tensor)).item()
-        
     def select_action(self, state):
         if random.random() <= self.epsilon:
             return random.randrange(self.action_size)
