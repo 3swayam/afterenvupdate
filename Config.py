@@ -45,7 +45,7 @@ class Config(object):
     LEARNING_RATE = 1e-3
     BATCH_SIZE = 64
     NUM_TRAIN_EPS = 1000
-    NUM_TEST_EPS = 200
+    NUM_TEST_EPS = 10
     TRAIN_MODE = False
     MODEL_NAME = "optimized_multi_agent_model"
 

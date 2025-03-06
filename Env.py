@@ -47,7 +47,7 @@ class Env:
         closest_RSU = self.selectClosestServer()
         closest_RSU.loadfactor = state[3]
         
-        reward = reward_calculate(action, state,self.vehicle,
+        reward,cost,latency = reward_calculate(action, state,self.vehicle,
                                        closest_RSU)
 
         # ✅ Move vehicle & update servers
@@ -65,6 +65,6 @@ class Env:
            if(self.cnt == Config.N_TEST_STEPS_PER_EPISODE):
                 self.done = True
 
-        return self.next_state, reward, self.done
+        return self.next_state, reward, self.done,cost,latency
 
 

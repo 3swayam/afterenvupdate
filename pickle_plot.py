@@ -70,7 +70,7 @@ train_metrics['combined_comp_delay_history'] = combined_comp_delay_history
 train_metrics['offloading_rate_history'] = offloading_rate_history
 
 # Set smoothing window size
-window_size = 10
+window_size = 10 if train_mode else 1
 
 # Plot Reward vs Episode
 plt.figure()
@@ -80,6 +80,26 @@ plt.xlabel('Episode')
 plt.ylabel('Reward')
 plt.legend()
 plt.savefig(f"plots/{folder}/reward_vs_episode.png")
+plt.show()
+
+# Plot Cost vs Episode
+plt.figure()
+plt.plot(moving_average(train_metrics.get('cost_history', []), window_size), label='Reward')
+plt.title('Episode vs Cost')
+plt.xlabel('Episode')
+plt.ylabel('Cost')
+plt.legend()
+plt.savefig(f"plots/{folder}/cost_vs_episode.png")
+plt.show()
+
+# Plot Latency vs Episode
+plt.figure()
+plt.plot(moving_average(train_metrics.get('latency_history', []), window_size), label='Reward')
+plt.title('Episode vs latency')
+plt.xlabel('Episode')
+plt.ylabel('latency')
+plt.legend()
+plt.savefig(f"plots/{folder}/latency_vs_episode.png")
 plt.show()
 
 # Plot Energy vs Episode

@@ -21,6 +21,8 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
     rsu_energy_history=[]
     n_vehicle_tasks_history = []
     n_rsu_tasks_history = []
+    cost_history =[]
+    latency_history =[]
 
     min_memory_size = batch_size * 5  # Ensure memory is filled before training
     step_cnt = 0
@@ -31,6 +33,8 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
         done = False
         state = env.reset()
         ep_score = 0
+        total_cost = 0
+        total_latency = 0
         vehicle_energy = 0
         rsu_energy = 0
         vehicle_comp_delay = 0
@@ -40,7 +44,7 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
         
         while not done:
             action = dqn_agent.select_action(state)
-            next_state, reward, done = env.step(state,action)
+            next_state, reward, done,cost,latency = env.step(state,action)
 
             dqn_agent.memory.store(state, action, next_state, reward, done)
             if len(dqn_agent.memory) > min_memory_size:
@@ -52,6 +56,8 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
             state = next_state
 
             ep_score += reward
+            total_cost += cost
+            total_latency += latency
             if action:
                 rsu = env.selectClosestServer()
                 rsu_energy += rsu.compute_energy(state[0]*1e6, vehicle.stayTime(rsu.stay_dist), vehicle.speed, vehicle.power)
@@ -69,6 +75,8 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
         dqn_agent.update_epsilon()
         # ADDING NEW CODE
         reward_history.append(ep_score)
+        cost_history.append(total_cost)
+        latency_history.append(total_latency)
         vehicle_energy_history.append(vehicle_energy)
         rsu_energy_history.append(rsu_energy)
         vehicle_comp_delay_history.append(vehicle_comp_delay)
@@ -87,6 +95,8 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
     with open(f'{model_filename}_train.pkl', 'wb') as f:
         pickle.dump({
             'reward_history': reward_history,
+            'cost_history': cost_history,
+            'latency_history': latency_history,
             'vehicle_energy_history': vehicle_energy_history,
             'rsu_energy_history':rsu_energy_history,
             'vehicle_comp_delay_history':vehicle_comp_delay_history,
@@ -98,6 +108,8 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
 def test(env, dqn_agent, num_test_eps):
     step_cnt = 0
     reward_history = []
+    cost_history = []
+    latency_history = []
     vehicle_energy_history = []
     rsu_energy_history = []
     vehicle_comp_delay_history = []
@@ -107,6 +119,8 @@ def test(env, dqn_agent, num_test_eps):
 
     for ep in range(num_test_eps):
         score = 0
+        total_cost = 0
+        total_latency = 0
         vehicle_energy = 0
         rsu_energy = 0
         vehicle_comp_delay = 0
@@ -120,8 +134,10 @@ def test(env, dqn_agent, num_test_eps):
         while not done:
             action = dqn_agent.select_action(state)
             print(state, action)
-            next_state, reward, done = env.step(state,action)
+            next_state, reward, done, cost,latency = env.step(state,action)
             score += reward
+            total_cost += cost
+            total_latency += latency
 
             if action:
                 rsu = env.selectClosestServer()
@@ -147,6 +163,8 @@ def test(env, dqn_agent, num_test_eps):
                         writer.writerow(item)
 
         reward_history.append(score)
+        cost_history.append(total_cost)
+        latency_history.append(total_latency)
         vehicle_energy_history.append(vehicle_energy)
         rsu_energy_history.append(rsu_energy)
         vehicle_comp_delay_history.append(vehicle_comp_delay)
@@ -159,6 +177,8 @@ def test(env, dqn_agent, num_test_eps):
     with open(f'{model_filename}_test.pkl', 'wb') as f:
         pickle.dump({
             'reward_history': reward_history,
+            'cost_history': cost_history,
+            'latency_history': latency_history,
             'vehicle_energy_history': vehicle_energy_history,
             'rsu_energy_history':rsu_energy_history,
             'vehicle_comp_delay_history':vehicle_comp_delay_history,

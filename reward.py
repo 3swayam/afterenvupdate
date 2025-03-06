@@ -48,4 +48,4 @@ def reward_calculate(action, state, vehicle, rsu, alpha=10, beta=5, gamma=2):
     # if state[5] > 3:
     immediate_reward += 5  # If multiple RSUs are available, offloading is better
  
-    return immediate_reward  # ❌ Removed Future Reward Component (γ max Q(s', a'))
+    return immediate_reward,cost,latency  # Removed Future Reward Component (γ max Q(s', a'))
