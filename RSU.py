@@ -25,15 +25,15 @@ class RSU:
         self.precision_error = Config.RSU_PRECISION_ERROR
 
     def compDelay(self, task_size):
-
         return task_size / (self.freq / Config.RSU_CPI)
 
     def isVehicleConnected(self, vehicle):
-
-        return self.calculateDistance(vehicle) <= (self.radius * 1.1)  # Allow slight buffer
+        dist = self.calculateDistance(vehicle)
+        flag = dist <= (self.radius * 1.1)  # Allow slight buffer
+        return flag
+        
 
     def calculateDistance(self, vehicle):
-
         return math.sqrt((vehicle.x_position - self.x_position) ** 2 + (vehicle.y_position - self.y_position) ** 2)
 
     def commDelay(self, task_size, stayTime, vehicleSpeed, vehiclePower):

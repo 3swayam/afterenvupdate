@@ -1,4 +1,6 @@
 class Config(object):
+    MIN_NUMBER_RSU = 3
+    TOTAL_AVAIL_RSU = 10
     # 🚗 VEHICLE PARAMETERS
     VEHICLE_FREQUENCY = 300 * 1e6  # Hz (300 MHz)
     VEHICLE_SPEED = 60  # km/h
@@ -17,7 +19,7 @@ class Config(object):
     # 📡 RSU PARAMETERS
     RSU_FREQUENCY = 2 * 1e9  # Hz (2 GHz)
     RSU_HEIGHT = 7  # meters
-    RSU_RADIUS = 400  # meters
+    RSU_RADIUS = 600  # meters
     RSU_POWER = 15  # Watts
     RSU_CPI = 2  # Cycles per instruction
     BANDWIDTH = 50 * 1e6  # Hz (50 MHz)

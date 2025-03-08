@@ -53,7 +53,7 @@ class RealWorld:
                     energy_consumption += rsu.compute_energy(task_size, self.vehicle.stayTime(rsu.stay_dist), self.vehicle.speed,
                                                     self.vehicle.power)
             else:
-                print("NO connected RSUS")
+                print("No connected RSUS")
             decision = "Offloaded"
         else:  # Process locally
             execution_time = self.vehicle.compDelay(task_size * 1e6)

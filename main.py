@@ -8,6 +8,7 @@ from Env import Env
 from Agent import DQNAgent
 import csv
 from Dataset import genStates 
+import random
 
 
 def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_filename):
@@ -129,12 +130,17 @@ def test(env, dqn_agent, num_test_eps):
             # next_state, reward, done = env.step(state,action)
             next_state, reward, done, connected_rsus = env.step(state, action) # Get connected RSUs
             score += reward
+            ep_state=[state[0],state[1],state[2],action]
 
             if action:
                 # Distribute workload to all connected servers
                 if connected_rsus:
                     task_size = state[0] * 1e6 / len(connected_rsus)
                     for rsu in connected_rsus:
+                        if(rsu.loadfactor==0):
+                            rsu_lf=random.randint(0, 11)
+                            rsu.loadfactor=rsu_lf
+                        ep_state.append(rsu.loadfactor)
                         rsu_energy += rsu.compute_energy(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power)
                         rsu_comm_delay_single = rsu.commDelay(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power) + Config.LATENCY
                         rsu_comp_delay += rsu.compDelay(task_size) + rsu_comm_delay_single
@@ -146,7 +152,7 @@ def test(env, dqn_agent, num_test_eps):
                 vehicle_comp_delay += env.vehicle.compDelay(state[0]*1e6)
                 n_vehicle_tasks += 1
 
-            episode_states_action.append(state + [action])
+            episode_states_action.append(ep_state)
             state = next_state
             step_cnt += 1
 
@@ -154,7 +160,7 @@ def test(env, dqn_agent, num_test_eps):
                 with open(f'{model_filename}.csv', 'w', newline='') as csvfile:
                     writer = csv.writer(csvfile)
 
-                    writer.writerow(['TaskSize', 'TaskDeadline', 'VehicleLoadFactor', 'RSULoadFactor', 'OffloadDecision'])
+                    writer.writerow(['TaskSize', 'TaskDeadline', 'VehicleLoadFactor', 'OffloadDecision', 'RSULoadFactor'])
                     for item in episode_states_action:
                         writer.writerow(item)
 
