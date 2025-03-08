@@ -84,7 +84,7 @@ plt.show()
 
 # Plot Cost vs Episode
 plt.figure()
-plt.plot(moving_average(train_metrics.get('cost_history', []), window_size), label='Reward')
+plt.plot(moving_average(train_metrics.get('cost_history', []), window_size), label='Cost')
 plt.title('Episode vs Cost')
 plt.xlabel('Episode')
 plt.ylabel('Cost')
@@ -94,7 +94,7 @@ plt.show()
 
 # Plot Latency vs Episode
 plt.figure()
-plt.plot(moving_average(train_metrics.get('latency_history', []), window_size), label='Reward')
+plt.plot(moving_average(train_metrics.get('latency_history', []), window_size), label='Latency')
 plt.title('Episode vs latency')
 plt.xlabel('Episode')
 plt.ylabel('latency')
