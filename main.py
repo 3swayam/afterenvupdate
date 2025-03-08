@@ -8,6 +8,7 @@ from Env import Env
 from Agent import DQNAgent
 import csv
 from Dataset import genStates 
+import random
 
 
 def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_filename):
@@ -44,12 +45,11 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
         
         while not done:
             action = dqn_agent.select_action(state)
-            next_state, reward, done,cost,latency = env.step(state,action)
+            next_state, reward, done, connected_rsus,cost,latency = env.step(state, action) # Get connected RSUs
 
             dqn_agent.memory.store(state, action, next_state, reward, done)
             if len(dqn_agent.memory) > min_memory_size:
                 dqn_agent.learn(batch_size=batch_size)
-            
             if step_cnt % update_frequency == 0:
                 dqn_agent.update_target_net()
 
@@ -59,11 +59,16 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
             total_cost += cost
             total_latency += latency
             if action:
-                rsu = env.selectClosestServer()
-                rsu_energy += rsu.compute_energy(state[0]*1e6, vehicle.stayTime(rsu.stay_dist), vehicle.speed, vehicle.power)
-                rsu_comm_delay = rsu.commDelay(state[0]*1e6, vehicle.stayTime(rsu.stay_dist), vehicle.speed, vehicle.power) + Config.LATENCY
-                rsu_comp_delay = rsu_comp_delay + rsu.compDelay(state[0]*1e6)+ rsu_comm_delay
-                n_rsu_tasks += 1
+                # Distribute workload to all connected servers
+                if connected_rsus:
+                    task_size = state[0] * 1e6 / len(connected_rsus)
+                    for rsu in connected_rsus:
+                        rsu_energy += rsu.compute_energy(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power)
+                        rsu_comm_delay_single = rsu.commDelay(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power) + Config.LATENCY
+                        rsu_comp_delay += rsu.compDelay(task_size) + rsu_comm_delay_single
+                        n_rsu_tasks += 1
+                else:
+                    print("No connected RSUS")
             else:
                 vehicle_energy += env.vehicle.compute_energy(state[0]*1e6)
                 vehicle_comp_delay += env.vehicle.compDelay(state[0]*1e6)
@@ -91,7 +96,7 @@ def train(env, dqn_agent, num_train_eps, update_frequency, batch_size, model_fil
         if ep_score >= max(reward_history[-10:], default=-np.inf):
             dqn_agent.save_model(model_filename)
 
-    # ✅ Save all tracked metrics
+    # Save all tracked metrics
     with open(f'{model_filename}_train.pkl', 'wb') as f:
         pickle.dump({
             'reward_history': reward_history,
@@ -133,24 +138,33 @@ def test(env, dqn_agent, num_test_eps):
 
         while not done:
             action = dqn_agent.select_action(state)
-            print(state, action)
-            next_state, reward, done, cost,latency = env.step(state,action)
+            next_state, reward, done, connected_rsus,cost,latency = env.step(state, action) # Get connected RSUs
             score += reward
             total_cost += cost
             total_latency += latency
+            ep_state=[state[0],state[1],state[2],action]
 
             if action:
-                rsu = env.selectClosestServer()
-                rsu_energy += rsu.compute_energy(state[0]*1e6, vehicle.stayTime(rsu.stay_dist), vehicle.speed, vehicle.power)
-                rsu_comm_delay = rsu.commDelay(state[0]*1e6, vehicle.stayTime(rsu.stay_dist), vehicle.speed, vehicle.power) + Config.LATENCY
-                rsu_comp_delay = rsu_comp_delay + rsu.compDelay(state[0]*1e6)+ rsu_comm_delay
-                n_rsu_tasks += 1
+                # Distribute workload to all connected servers
+                if connected_rsus:
+                    task_size = state[0] * 1e6 / len(connected_rsus)
+                    for rsu in connected_rsus:
+                        if(rsu.loadfactor==0):
+                            rsu_lf=random.randint(0, 11)
+                            rsu.loadfactor=rsu_lf
+                        ep_state.append(rsu.loadfactor)
+                        rsu_energy += rsu.compute_energy(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power)
+                        rsu_comm_delay_single = rsu.commDelay(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power) + Config.LATENCY
+                        rsu_comp_delay += rsu.compDelay(task_size) + rsu_comm_delay_single
+                    n_rsu_tasks += 1 #todo :: discuss
+                else:
+                    print("No connected RSUS")
             else:
                 vehicle_energy += env.vehicle.compute_energy(state[0]*1e6)
                 vehicle_comp_delay += env.vehicle.compDelay(state[0]*1e6)
                 n_vehicle_tasks += 1
 
-            episode_states_action.append(state + [action])
+            episode_states_action.append(ep_state)
             state = next_state
             step_cnt += 1
 
@@ -158,7 +172,7 @@ def test(env, dqn_agent, num_test_eps):
                 with open(f'{model_filename}.csv', 'w', newline='') as csvfile:
                     writer = csv.writer(csvfile)
 
-                    writer.writerow(['TaskSize', 'TaskDeadline', 'VehicleLoadFactor', 'RSULoadFactor', 'OffloadDecision'])
+                    writer.writerow(['TaskSize', 'TaskDeadline', 'VehicleLoadFactor', 'OffloadDecision', 'RSULoadFactor'])
                     for item in episode_states_action:
                         writer.writerow(item)
 
@@ -171,9 +185,8 @@ def test(env, dqn_agent, num_test_eps):
         rsu_comp_delay_history.append(rsu_comp_delay)
         n_vehicle_tasks_history.append(n_vehicle_tasks)
         n_rsu_tasks_history.append(n_rsu_tasks)
-        print('Ep: {}, Score: {}'.format(ep, score))
-
-        # ✅ Save all tracked metrics
+        
+        # Save all tracked metrics
     with open(f'{model_filename}_test.pkl', 'wb') as f:
         pickle.dump({
             'reward_history': reward_history,

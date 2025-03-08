@@ -4,7 +4,7 @@ import os
 import numpy as np
 from Config import Config
 
-N_STEPS_PER_EPISODE = 1350  # ✅ Defines number of steps per episode
+N_STEPS_PER_EPISODE = 1350  # Defines number of steps per episode
 train_mode = Config.TRAIN_MODE
 model_filename = Config.MODEL_NAME
 folder = "train" if train_mode else "test"
@@ -46,7 +46,7 @@ def moving_average(data, window_size):
 if not os.path.exists('plots'):
     os.makedirs('plots')
 
-# ✅ Load training metrics
+# Load training metrics
 if train_mode:
     file_name= f"{model_filename}_train.pkl"
 else:

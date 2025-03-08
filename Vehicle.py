@@ -19,7 +19,7 @@ class Vehicle:
         self.path_points = Config.VEHICLE_PATH_POINTS
         self.current_waypoint = 1
 
-        # ✅ New: Track total energy consumed
+        # New: Track total energy consumed
         self.total_energy_consumed = 0
 
     def compDelay(self, task_size): # same 
@@ -29,22 +29,11 @@ class Vehicle:
         comp_energy = self.power * self.compDelay(task_size)
         comm_energy = self.power * comm_delay
 
-        # ✅ Track energy consumption
+        # Track energy consumption
         total_energy = comp_energy + comm_energy
         self.total_energy_consumed += total_energy
 
         return total_energy
-
-    def get_energy_consumed(self):  # ✅ New method
-        """ Returns total energy consumed by the vehicle """
-        return self.total_energy_consumed
-
-    def get_state(self):
-        task_size = 5
-        task_deadline = 10
-        rsu_load_factor = 5
-
-        return [task_size, task_deadline, self.loadfactor, rsu_load_factor]
 
     def move(self, time_step):
         if self.current_waypoint < len(self.path_points):
@@ -73,14 +62,3 @@ class Vehicle:
     def stayTime(self, stay_dist):
         self.stay_time = stay_dist / max(self.velocity_x, Config.VEHICLE_PRECISION_ERROR)
         return int(self.stay_time)
-
-    def isConnected(self, rsu):
-        return math.sqrt((self.x_position - rsu.x_position) ** 2 + (self.y_position - rsu.y_position) ** 2) < rsu.radius
-
-    def computeInstructionCycles(self, cycles_per_instruction=Config.VEHICLE_CPI):
-        return (self.freq * cycles_per_instruction) / 200
-
-    def resourceUtilization(self):
-        matrix = np.random.rand(*Config.COMPUTATION_MATRIX_SIZE)
-        utilization = np.sum(matrix) / np.prod(Config.COMPUTATION_MATRIX_SIZE)
-        return utilization <= Config.RESOURCE_UTILIZATION_THRESHOLD

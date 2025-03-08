@@ -31,21 +31,21 @@ def reward_calculate(action, state, vehicle, rsu, alpha=10, beta=5, gamma=2):
  
     # Apply **Penalties**
     if task_deadline < latency:
-        immediate_reward -= 5  # Penalty if deadline is missed
+        immediate_reward -= 10  # Penalty if deadline is missed
     if vehicle.loadfactor > 8 and action == 0:
-        immediate_reward -= 5  # Avoid overloading the vehicle
+        immediate_reward -= 10  # Avoid overloading the vehicle
     if rsu.loadfactor > 8 and action == 1:
-        immediate_reward -= 5  # Avoid overloading RSU
+        immediate_reward -= 10  # Avoid overloading RSU
     if vehicle.speed > 30 and action == 1:
-        immediate_reward -= 2  # If vehicle moves too fast, offloading may fail
+        immediate_reward -= 10  # If vehicle moves too fast, offloading may fail
  
     # Apply **Incentives**
     if vehicle.loadfactor < 2 and action == 0:
-        immediate_reward += 15  # Encourage local execution if vehicle is free
+        immediate_reward += 10  # Encourage local execution if vehicle is free
     if rsu.loadfactor < 2 and action == 1:
-        immediate_reward += 15  # Encourage offloading if RSU is free
+        immediate_reward += 10  # Encourage offloading if RSU is free
 
     # if state[5] > 3:
-    immediate_reward += 5  # If multiple RSUs are available, offloading is better
+    immediate_reward += 2  # If multiple RSUs are available, offloading is better
  
     return immediate_reward,cost,latency  # Removed Future Reward Component (γ max Q(s', a'))
