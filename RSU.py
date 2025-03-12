@@ -1,7 +1,7 @@
 import math
-import numpy as np
 from Config import Config
 from scipy.integrate import quad
+import random
 
 class RSU:
     def __init__(self, vehicle, relative_x, relative_y=0):
@@ -13,7 +13,8 @@ class RSU:
         self.freq = Config.RSU_FREQUENCY
         self.power = Config.RSU_POWER
         self.radius = Config.RSU_RADIUS
-        self.loadfactor = 0  # New: Tracks RSU load dynamically
+        self.loadfactor = round(random.uniform(0, 11)) #0  # New: Tracks RSU load dynamically
+        # print("RSU-----",self.loadfactor)
         self.height = Config.RSU_HEIGHT
         self.stay_dist = 2 * math.sqrt(self.radius**2 - self.height**2)
         self.bandwidth = Config.BANDWIDTH

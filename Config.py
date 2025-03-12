@@ -19,7 +19,7 @@ class Config(object):
     # 📡 RSU PARAMETERS
     RSU_FREQUENCY = 2 * 1e9  # Hz (2 GHz)
     RSU_HEIGHT = 7  # meters
-    RSU_RADIUS = 600  # meters
+    RSU_RADIUS = 400  # meters
     RSU_POWER = 15  # Watts
     RSU_CPI = 2  # Cycles per instruction
     BANDWIDTH = 50 * 1e6  # Hz (50 MHz)
@@ -46,9 +46,9 @@ class Config(object):
     MEMORY_CAPACITY = 5000
     LEARNING_RATE = 1e-3
     BATCH_SIZE = 64
-    NUM_TRAIN_EPS = 1000
-    NUM_TEST_EPS = 10
-    TRAIN_MODE = True
+    NUM_TRAIN_EPS = 10
+    NUM_TEST_EPS = 2
+    TRAIN_MODE = False
     MODEL_NAME = "optimized_multi_agent_model"
 
     NUM_MEMORY_FILL_EPS = 3

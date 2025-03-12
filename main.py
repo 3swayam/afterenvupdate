@@ -148,10 +148,8 @@ def test(env, dqn_agent, num_test_eps):
                 # Distribute workload to all connected servers
                 if connected_rsus:
                     task_size = state[0] * 1e6 / len(connected_rsus)
-                    for rsu in connected_rsus:
-                        if(rsu.loadfactor==0):
-                            rsu_lf=random.randint(0, 11)
-                            rsu.loadfactor=rsu_lf
+                    for index, rsu in enumerate(connected_rsus):
+                        #print(len(connected_rsus),index,rsu.loadfactor)
                         ep_state.append(rsu.loadfactor)
                         rsu_energy += rsu.compute_energy(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power)
                         rsu_comm_delay_single = rsu.commDelay(task_size, env.vehicle.stayTime(rsu.stay_dist), env.vehicle.speed, env.vehicle.power) + Config.LATENCY
